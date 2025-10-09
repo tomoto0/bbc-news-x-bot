@@ -1,0 +1,40 @@
+
+name: BBC News Analysis and X Post
+
+on:
+  schedule:
+    # 毎日午後7時半 (UTCで午前10時半) に実行
+    # GitHub ActionsのcronはUTCで動作します。
+    # 日本時間(JST)の午後7時半はUTCの午前10時半です。
+    # (JST = UTC + 9時間)
+    - cron: '30 10 * * *'
+  workflow_dispatch: # 手動実行を可能にする
+
+jobs:
+  build-and-post:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4 google-generativeai tweepy
+
+    - name: Run BBC News Analysis and X Post Script
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+        TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+        TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+        TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+        POST_TO_X: "true" # Xへの投稿を有効にする
+      run: python main.py
+
