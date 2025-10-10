@@ -23,13 +23,15 @@ def get_latest_bbc_news():
     article_title = None
     
     # BBC Newsの政治セクションの最新記事を見つけるためのセレクタ
-    # 複数のセレクタを試して、最も適切なものを見つける
     # ページ構造の調査結果に基づき、より具体的なセレクタを試す
+    # ニュース記事のタイトルとリンクは通常、gs-c-promo-headingクラスを持つh3タグ内のaタグにあることが多い
+    # または、gs-c-promo-bodyクラスを持つdiv内のh3タグ内のaタグ
     selectors = [
         'div.gs-c-promo-body h3.gs-c-promo-heading a.gs-c-promo-heading__link',
         'div.gs-c-promo-body h3 a',
         'a.gs-c-promo-heading',
-        'div[data-entityid*="article"] h3 a'
+        'div[data-entityid*="article"] h3 a',
+        'div.gel-layout__item h3.gs-c-promo-heading a'
     ]
 
     for selector in selectors:
