@@ -31,7 +31,7 @@ def main():
             print("Failed to post tweet to X.")
             sys.exit(1)
     else:
-        print("Skipping X post as POST_TO_X environment variable is not set to 'true'.")
+        print("Skipping X post as POST_TO_X environment variable is not set to \'true\'.")
         print("To enable posting, set POST_TO_X=true in your environment variables or GitHub Actions secrets.")
 
     print("App finished.")
