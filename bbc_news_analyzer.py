@@ -1,4 +1,3 @@
-'''
 import requests
 from bs4 import BeautifulSoup
 import google.generativeai as genai
@@ -126,4 +125,4 @@ if __name__ == "__main__":
             print(f"Tweet character width: {get_char_width(tweet_text)}")
     else:
         print("Failed to get BBC news or analyze it.")
-'''')
+
