@@ -1,4 +1,4 @@
-
+'''
 import requests
 from bs4 import BeautifulSoup
 import google.generativeai as genai
@@ -20,47 +20,29 @@ def get_latest_bbc_news():
 
     soup = BeautifulSoup(response.content, 'html.parser')
     
-    latest_article_title = None
-    latest_article_link = None
-    
-    # BBC Newsの政治セクションの最新記事を見つけるためのセレクタ
-    # ページ構造の調査結果に基づき、より具体的なセレクタを試す
-    # ニュース記事のタイトルとリンクは通常、gs-c-promo-headingクラスを持つh3タグ内のaタグにあることが多い
-    # または、gs-c-promo-bodyクラスを持つdiv内のh3タグ内のaタグ
-    
-    # 優先度の高いセレクタから順に試す
-    selectors = [
-        # メインのプロモブロックのタイトルとリンク (最も確実なパターン)
-        'div.gs-c-promo-body h3.gs-c-promo-heading a.gs-c-promo-heading__link',
-        # 他のプロモブロックのタイトルとリンク
-        'div.gs-c-promo-body h3 a',
-        # 汎用的なプロモヘッディングリンク
-        'a.gs-c-promo-heading',
-        # data-entityidがarticleを含む要素内のh3 a
-        'div[data-entityid*="article"] h3 a',
-        # gel-layout__item内のh3 a
-        'div.gel-layout__item h3.gs-c-promo-heading a',
-        # ニュース記事のリストでよく使われるセレクタ
-        'div.gel-layout__item--flush-bottom a.gs-c-promo-heading',
-        'div.gel-layout__item--flush-bottom h3 a',
-        # 新たに追加するセレクタ: h2タグ内のaタグ (主要な記事の可能性)
-        'h2 a'
-    ]
+    # メインコンテンツエリアを特定
+    main_content = soup.find('main', {'id': 'main-content'})
+    if not main_content:
+        print("Could not find the main content area of the page.")
+        return None, None
 
-    for selector in selectors:
-        link_tag = soup.select_one(selector)
-        if link_tag and link_tag.has_attr('href'):
-            title = link_tag.get_text(strip=True)
-            href = link_tag['href']
-            if href.startswith('/'):
-                link = "https://www.bbc.com" + href
-            else:
-                link = href
+    # メインコンテンツ内のすべてのリンクを検索
+    links = main_content.find_all('a', href=True)
+    
+    for link in links:
+        href = link['href']
+        # ニュース記事のURLパターンに合致するかチェック
+        if re.match(r'/news/articles/c[a-zA-Z0-9]{10}o', href):
+            article_link = "https://www.bbc.com" + href
+            article_title = link.find('h3')
+            if article_title:
+                article_title = article_title.get_text(strip=True)
+            else: # h3が見つからない場合は、リンクのテキストをタイトルとする
+                article_title = link.get_text(strip=True)
             
-            # タイトルとリンクが取得できれば、それを最新の記事とみなす
-            if title and link:
-                print(f"Found article: {title} - {link}")
-                return title, link
+            if article_title and article_link:
+                print(f"Found article: {article_title} - {article_link}")
+                return article_title, article_link
 
     print("Could not find a suitable article on BBC News Politics page.")
     return None, None
@@ -144,4 +126,4 @@ if __name__ == "__main__":
             print(f"Tweet character width: {get_char_width(tweet_text)}")
     else:
         print("Failed to get BBC news or analyze it.")
-
+'''')
