@@ -23,16 +23,32 @@ def get_latest_bbc_news():
     latest_article_title = None
     latest_article_link = None
     
-    # ニュース記事のブロックを特定するためのセレクタ
-    # BBCのニュースページでは、記事がgs-c-promoクラスを持つdiv要素内に配置されていることが多い
-    # または、gel-layout__itemクラスを持つdiv要素内に配置されていることもある
-    article_blocks = soup.select('div.gs-c-promo, div.gel-layout__item')
+    # BBC Newsの政治セクションの最新記事を見つけるためのセレクタ
+    # ページ構造の調査結果に基づき、より具体的なセレクタを試す
+    # ニュース記事のタイトルとリンクは通常、gs-c-promo-headingクラスを持つh3タグ内のaタグにあることが多い
+    # または、gs-c-promo-bodyクラスを持つdiv内のh3タグ内のaタグ
     
-    # 記事ブロックをループして、タイトルとリンク、そして時間情報を取得
-    for block in article_blocks:
-        link_tag = block.select_one('h3.gs-c-promo-heading a.gs-c-promo-heading__link, h3 a')
-        time_tag = block.select_one('span.gs-c-promo-meta__time')
-        
+    # 優先度の高いセレクタから順に試す
+    selectors = [
+        # メインのプロモブロックのタイトルとリンク (最も確実なパターン)
+        'div.gs-c-promo-body h3.gs-c-promo-heading a.gs-c-promo-heading__link',
+        # 他のプロモブロックのタイトルとリンク
+        'div.gs-c-promo-body h3 a',
+        # 汎用的なプロモヘッディングリンク
+        'a.gs-c-promo-heading',
+        # data-entityidがarticleを含む要素内のh3 a
+        'div[data-entityid*="article"] h3 a',
+        # gel-layout__item内のh3 a
+        'div.gel-layout__item h3.gs-c-promo-heading a',
+        # ニュース記事のリストでよく使われるセレクタ
+        'div.gel-layout__item--flush-bottom a.gs-c-promo-heading',
+        'div.gel-layout__item--flush-bottom h3 a',
+        # 新たに追加するセレクタ: h2タグ内のaタグ (主要な記事の可能性)
+        'h2 a'
+    ]
+
+    for selector in selectors:
+        link_tag = soup.select_one(selector)
         if link_tag and link_tag.has_attr('href'):
             title = link_tag.get_text(strip=True)
             href = link_tag['href']
@@ -41,27 +57,13 @@ def get_latest_bbc_news():
             else:
                 link = href
             
-            # 時間情報があれば、最新の記事を判断するのに役立つ
-            if time_tag:
-                time_text = time_tag.get_text(strip=True)
-                # ここでは単純に最初に見つかった有効な記事を最新とみなす
-                # より厳密な時間比較を行うことも可能だが、まずは記事が見つかることを優先
-                latest_article_title = title
-                latest_article_link = link
-                print(f"Found potential article: {title} - {link} ({time_text})")
-                break # 最初に見つかった記事を最新とみなして終了
-            elif not latest_article_title: # 時間情報がない場合でも、最初の記事を確保
-                latest_article_title = title
-                latest_article_link = link
-                print(f"Found potential article (no time info): {title} - {link}")
-                # 時間情報がない場合は、より下位のセレクタでより新しい記事が見つかる可能性があるのでbreakしない
+            # タイトルとリンクが取得できれば、それを最新の記事とみなす
+            if title and link:
+                print(f"Found article: {title} - {link}")
+                return title, link
 
-    if latest_article_title and latest_article_link:
-        print(f"Selected latest article: {latest_article_title} - {latest_article_link}")
-        return latest_article_title, latest_article_link
-    else:
-        print("Could not find a suitable article on BBC News Politics page.")
-        return None, None
+    print("Could not find a suitable article on BBC News Politics page.")
+    return None, None
 
 def get_char_width(text):
     """全角・半角を考慮した文字幅を計算する"""
