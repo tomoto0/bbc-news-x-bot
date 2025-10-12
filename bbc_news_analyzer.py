@@ -19,6 +19,9 @@ def get_latest_bbc_news():
 
     soup = BeautifulSoup(response.content, 'html.parser')
     
+    latest_article_title = None
+    latest_article_link = None
+    
     # メインコンテンツエリアを特定
     main_content = soup.find('main', {'id': 'main-content'})
     if not main_content:
@@ -31,11 +34,13 @@ def get_latest_bbc_news():
     for link in links:
         href = link['href']
         # ニュース記事のURLパターンに合致するかチェック
+        # BBC NewsのURLパターンは /news/articles/cXXXXXXXXXXo の形式が多い
         if re.match(r'/news/articles/c[a-zA-Z0-9]{10}o', href):
             article_link = "https://www.bbc.com" + href
-            article_title = link.find('h3')
-            if article_title:
-                article_title = article_title.get_text(strip=True)
+            # リンクテキストまたはh3タグ内のテキストをタイトルとする
+            article_title_tag = link.find('h3')
+            if article_title_tag:
+                article_title = article_title_tag.get_text(strip=True)
             else: # h3が見つからない場合は、リンクのテキストをタイトルとする
                 article_title = link.get_text(strip=True)
             
@@ -63,7 +68,40 @@ def analyze_news_with_gemini(article_title, article_url):
         return None
 
     genai.configure(api_key=gemini_api_key)
-    model = genai.GenerativeModel('gemini-pro')
+    
+    # 利用可能なモデルをリストし、適切なモデルを選択
+    model_name = None
+    available_models = []
+    try:
+        for m in genai.list_models():
+            available_models.append(m.name)
+            if "generateContent" in m.supported_generation_methods:
+                if "gemini-1.5-flash" in m.name:
+                    model_name = m.name
+                    break
+                elif "gemini-1.5-pro" in m.name:
+                    model_name = m.name
+                    break
+                elif "gemini-pro" in m.name:
+                    model_name = m.name
+                    break
+    except Exception as e:
+        print(f"Error listing Gemini models: {e}")
+        print(f"Available models (if any were listed before error): {available_models}")
+        return None
+
+    print(f"All available models: {available_models}")
+    print(f"Selected model: {model_name}")
+
+    if not model_name:
+        print("Error: No suitable Gemini model found that supports generateContent.")
+        return None
+
+    try:
+        model = genai.GenerativeModel(model_name)
+    except Exception as e:
+        print(f"Error initializing Gemini model {model_name}: {e}")
+        return None
 
     # URLは全角23文字としてカウント
     url_counted_width = 23
