@@ -76,13 +76,13 @@ def analyze_news_with_gemini(article_title, article_url):
         for m in genai.list_models():
             available_models.append(m.name)
             if "generateContent" in m.supported_generation_methods:
-                if "gemini-1.5-flash" in m.name:
+                if "gemini-2.5-flash" in m.name:
                     model_name = m.name
                     break
-                elif "gemini-1.5-pro" in m.name:
+                elif "gemini-2.5-flash" in m.name:
                     model_name = m.name
                     break
-                elif "gemini-pro" in m.name:
+                elif "gemini-2.5-flash" in m.name:
                     model_name = m.name
                     break
     except Exception as e:
