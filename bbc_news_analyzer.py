@@ -4,9 +4,9 @@ from html import unescape
 from urllib.parse import urljoin, urlparse
 from xml.etree import ElementTree as ET
 
-import google.generativeai as genai
 import requests
 from bs4 import BeautifulSoup
+from google import genai
 
 
 def get_latest_bbc_news():
@@ -103,34 +103,10 @@ def analyze_news_with_gemini(article_title, article_url):
         print("Error: GEMINI_API_KEY is not set in environment variables.")
         return None
 
-    genai.configure(api_key=gemini_api_key)
-
-    # 利用可能なモデルをリストし、適切なモデルを選択
-    model_name = None
-    available_models = []
     try:
-        for m in genai.list_models():
-            available_models.append(m.name)
-            if "generateContent" in m.supported_generation_methods:
-                if "gemini-2.5-flash" in m.name:
-                    model_name = m.name
-                    break
+        client = genai.Client(api_key=gemini_api_key)
     except Exception as e:
-        print(f"Error listing Gemini models: {e}")
-        print(f"Available models (if any were listed before error): {available_models}")
-        return None
-
-    print(f"All available models: {available_models}")
-    print(f"Selected model: {model_name}")
-
-    if not model_name:
-        print("Error: No suitable Gemini model found that supports generateContent.")
-        return None
-
-    try:
-        model = genai.GenerativeModel(model_name)
-    except Exception as e:
-        print(f"Error initializing Gemini model {model_name}: {e}")
+        print(f"Error initializing Gemini client: {e}")
         return None
 
     # URLは全角23文字としてカウント
@@ -147,12 +123,18 @@ def analyze_news_with_gemini(article_title, article_url):
 タイトル: {article_title}
 URL: {article_url}
 
-分析コメント:
+    分析コメント:
 """
 
     try:
-        response = model.generate_content(prompt)
-        analysis = response.text.strip()
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        analysis = (response.text or "").strip()
+        if not analysis:
+            print("Error: Gemini returned an empty response.")
+            return None
 
         # Geminiからの応答が指定文字数を超過している可能性があるので、再度調整
         current_analysis_width = get_char_width(analysis)
@@ -179,6 +161,8 @@ URL: {article_url}
     except Exception as e:
         print(f"Error generating content with Gemini API: {e}")
         return None
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
