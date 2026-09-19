@@ -1,7 +1,7 @@
 import os
-import re
 import unicodedata
 from html import unescape
+from urllib.parse import urljoin, urlparse
 from xml.etree import ElementTree as ET
 
 import google.generativeai as genai
@@ -62,13 +62,17 @@ def get_latest_bbc_news():
         main_content = soup.find("main") or soup.find("article") or soup
 
         for link in main_content.find_all("a", href=True):
-            href = link["href"]
-            if re.match(r"^(https?://)?(www\.)?bbc\.(com|co\.uk)/news/.*", href):
+            normalized_link = urljoin(url, link["href"])
+            parsed_link = urlparse(normalized_link)
+            is_bbc_news_link = (
+                parsed_link.netloc in {"bbc.com", "www.bbc.com", "bbc.co.uk", "www.bbc.co.uk"}
+                and parsed_link.path.startswith("/news/")
+            )
+            if is_bbc_news_link:
                 title = link.get_text(" ", strip=True)
                 if not title:
                     title = link.get("aria-label") or ""
                 if title:
-                    normalized_link = href if href.startswith("http") else f"https://www.bbc.com{href}"
                     print(f"Found article via homepage fallback: {title} - {normalized_link}")
                     return title, normalized_link
 
