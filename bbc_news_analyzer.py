@@ -1,4 +1,5 @@
 import os
+import time
 import unicodedata
 from html import unescape
 from urllib.parse import urljoin, urlparse
@@ -7,6 +8,17 @@ from xml.etree import ElementTree as ET
 import requests
 from bs4 import BeautifulSoup
 from google import genai
+
+
+# Start with the newest stable Flash model. Older stable models provide a
+# graceful fallback if a model is unavailable for the API key or is overloaded.
+GEMINI_MODELS = (
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-2.5-flash",
+)
+MAX_GEMINI_ATTEMPTS = 3
+RETRYABLE_GEMINI_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 def get_latest_bbc_news():
@@ -127,13 +139,44 @@ URL: {article_url}
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        analysis = (response.text or "").strip()
+        analysis = None
+        for model_name in GEMINI_MODELS:
+            try:
+                chat = client.chats.create(model=model_name)
+            except Exception as exc:
+                print(f"Could not initialize {model_name}: {exc}")
+                continue
+
+            for attempt in range(1, MAX_GEMINI_ATTEMPTS + 1):
+                try:
+                    # Chat.send_message is the SDK-recommended path and avoids
+                    # the direct Models.generate_content AFC warning.
+                    response = chat.send_message(prompt)
+                    analysis = (response.text or "").strip()
+                    if analysis:
+                        print(f"Generated analysis with {model_name}.")
+                        break
+                    print(f"Gemini returned an empty response from {model_name}.")
+                except Exception as exc:
+                    status_code = getattr(exc, "code", None)
+                    is_retryable = status_code in RETRYABLE_GEMINI_STATUS_CODES
+                    if is_retryable and attempt < MAX_GEMINI_ATTEMPTS:
+                        delay_seconds = 2 ** (attempt - 1)
+                        print(
+                            f"Gemini request to {model_name} failed with {status_code}; "
+                            f"retrying in {delay_seconds} seconds ({attempt}/{MAX_GEMINI_ATTEMPTS})."
+                        )
+                        time.sleep(delay_seconds)
+                        continue
+
+                    print(f"Gemini request to {model_name} failed: {exc}")
+                    break
+
+            if analysis:
+                break
+
         if not analysis:
-            print("Error: Gemini returned an empty response.")
+            print("Error: all configured Gemini models failed to generate a response.")
             return None
 
         # Geminiからの応答が指定文字数を超過している可能性があるので、再度調整
